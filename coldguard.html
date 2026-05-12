@@ -86,6 +86,39 @@
   .remember-row a { font-size: 13px; color: var(--primary); cursor: pointer; }
   .spinner { display: inline-block; width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
 
+  /* ─── SETUP SCREEN ─── */
+  #setup-screen {
+    display: none;
+    min-height: 100vh;
+    background: linear-gradient(160deg, #0A3D7A 0%, #1A6FD4 50%, #3B82F6 100%);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  #setup-screen.visible { display: flex; }
+
+  /* Setup steps indicator */
+  .setup-steps {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 28px;
+  }
+  .setup-step {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    font-size: 13px; font-weight: 700;
+    transition: all .3s;
+  }
+  .setup-step.done { background: rgba(255,255,255,0.9); color: var(--primary); }
+  .setup-step.active { background: white; color: var(--primary); box-shadow: 0 0 0 4px rgba(255,255,255,0.3); }
+  .setup-step.pending { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); }
+  .setup-step-line { width: 32px; height: 2px; background: rgba(255,255,255,0.3); border-radius: 1px; }
+  .setup-step-line.done { background: rgba(255,255,255,0.8); }
+
+  .setup-label {
+    font-size: 12px; color: rgba(255,255,255,0.7); text-align: center;
+    margin-bottom: 6px; letter-spacing: 0.5px;
+  }
+
   /* ─── APP SHELL ─── */
   #app-screen { display: none; min-height: 100vh; }
   .app-layout { display: flex; min-height: 100vh; }
@@ -329,6 +362,13 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
   .pulse { animation: pulse 1.5s ease infinite; }
 
+  /* Setup card animation */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .setup-animate { animation: slideUp .4s ease both; }
+
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
@@ -372,9 +412,19 @@
 </div>
 
 
-<!-- ══ SETUP SCREEN (premier dispositif) ══════════════════════════ -->
-<div id="setup-screen" style="display:none; min-height:100vh; background:linear-gradient(160deg,#0A3D7A 0%,#1A6FD4 50%,#3B82F6 100%); display:none; align-items:center; justify-content:center;">
-  <div class="auth-card" style="max-width:460px">
+<!-- ══ SETUP SCREEN (liaison dispositif — après connexion) ══════════ -->
+<div id="setup-screen">
+  <!-- Indicateur d'étapes -->
+  <div class="setup-animate" style="text-align:center; margin-bottom:0">
+    <div class="setup-label">ÉTAPE 2 SUR 2</div>
+    <div class="setup-steps" style="justify-content:center">
+      <div class="setup-step done">✓</div>
+      <div class="setup-step-line done"></div>
+      <div class="setup-step active">2</div>
+    </div>
+  </div>
+
+  <div class="auth-card setup-animate" style="max-width:460px; margin-top:16px">
     <div class="logo-wrap">
       <div class="logo-icon">🔗</div>
       <div class="logo-title">Lier votre dispositif</div>
@@ -403,7 +453,7 @@
       <div style="font-size:12px;color:#94A3B8;margin-top:5px">🔑 Code affiché sur l'écran de votre capteur</div>
     </div>
 
-    <button class="btn-primary" style="margin-top:20px" onclick="setupClaimDevice()">
+    <button class="btn-primary" id="setup-claim-btn" style="margin-top:20px" onclick="setupClaimDevice()">
       Connecter le dispositif
     </button>
 
@@ -713,6 +763,26 @@ const app   = initializeApp(firebaseConfig);
 const auth  = getAuth(app);
 const db    = getDatabase(app);
 
+// ══ HELPERS D'AFFICHAGE DES ÉCRANS ═══════════════════════════════
+function showScreen(name) {
+  // name: 'auth' | 'setup' | 'app'
+  const authEl  = document.getElementById('auth-screen');
+  const setupEl = document.getElementById('setup-screen');
+  const appEl   = document.getElementById('app-screen');
+
+  authEl.style.display  = 'none';
+  setupEl.classList.remove('visible');
+  appEl.style.display   = 'none';
+
+  if (name === 'auth') {
+    authEl.style.display = 'flex';
+  } else if (name === 'setup') {
+    setupEl.classList.add('visible');
+  } else if (name === 'app') {
+    appEl.style.display = 'block';
+  }
+}
+
 // ══ STATE ════════════════════════════════════════════════════════
 let currentUser   = null;
 let myDevices     = [];
@@ -761,42 +831,48 @@ window.submitAuth = async function() {
 };
 
 function authError(code) {
-  if (code.includes('user-not-found'))  return 'Aucun compte avec cet e-mail';
-  if (code.includes('wrong-password'))  return 'Mot de passe incorrect';
-  if (code.includes('email-already'))   return 'E-mail déjà utilisé';
-  if (code.includes('weak-password'))   return 'Mot de passe trop faible (6 car. min)';
-  if (code.includes('invalid-email'))   return 'Adresse e-mail invalide';
+  if (code.includes('user-not-found'))     return 'Aucun compte avec cet e-mail';
+  if (code.includes('wrong-password'))     return 'Mot de passe incorrect';
+  if (code.includes('email-already'))      return 'E-mail déjà utilisé';
+  if (code.includes('weak-password'))      return 'Mot de passe trop faible (6 car. min)';
+  if (code.includes('invalid-email'))      return 'Adresse e-mail invalide';
   if (code.includes('invalid-credential')) return 'Identifiants incorrects';
   return 'Erreur : ' + code;
 }
 
+// ══ OBSERVER D'ÉTAT ═════════════════════════════════════════════
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('setup-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display  = 'none';
+    // Mettre à jour les infos utilisateur dans la sidebar
     const initials = user.email.charAt(0).toUpperCase();
     document.getElementById('user-avatar').textContent = initials;
     document.getElementById('user-email').textContent  = user.email;
+    // Mettre à jour le sous-titre du setup
+    document.getElementById('setup-email-display').textContent = 'Connecté en tant que ' + user.email;
+    // Charger les dispositifs → détermine quel écran afficher
     await loadMyDevices();
   } else {
     currentUser = null;
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('setup-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display  = 'none';
-    document.getElementById('auth-btn').textContent = 'Se connecter';
-    document.getElementById('auth-btn').disabled = false;
+    myDevices   = [];
+    currentDevice = null;
+    deviceInfo  = null;
+    // Réinitialiser le bouton de connexion
+    const btn = document.getElementById('auth-btn');
+    btn.textContent = isLoginMode ? 'Se connecter' : 'Créer le compte';
+    btn.disabled = false;
+    showScreen('auth');
   }
 });
 
+// ══ SETUP : LIAISON DISPOSITIF (premier écran post-auth) ══════════
 window.setupClaimDevice = async function() {
   const id   = document.getElementById('setup-device-id').value.trim();
   const code = document.getElementById('setup-claim-code').value.trim().toUpperCase();
   if (!id || !code) { showToast('Remplissez tous les champs', 'error'); return; }
   if (!currentUser) { showToast('Non connecté', 'error'); return; }
 
-  const btn = document.querySelector('#setup-screen .btn-primary');
+  const btn = document.getElementById('setup-claim-btn');
   btn.innerHTML = '<span class="spinner"></span> Connexion...';
   btn.disabled = true;
 
@@ -811,15 +887,25 @@ window.setupClaimDevice = async function() {
       showToast('Code secret incorrect', 'error');
       btn.textContent = 'Connecter le dispositif'; btn.disabled = false; return;
     }
+    // Lier l'utilisateur au dispositif
     await set(ref(db, `coldguard/devices/${id}/users/${currentUser.uid}`), true);
-    showToast('Dispositif connecté ! ✅', 'success');
-    document.getElementById('setup-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
+
     if (!myDevices.includes(id)) myDevices.push(id);
     const sel = document.getElementById('device-select');
     sel.innerHTML = myDevices.map(d => `<option value="${d}">${d}</option>`).join('');
+
+    showToast('Dispositif connecté ! ✅', 'success');
+
+    // Basculer vers l'app
+    showScreen('app');
     await selectDevice(id);
     showPage('dashboard');
+
+    // Réinitialiser les champs du setup
+    document.getElementById('setup-device-id').value  = '';
+    document.getElementById('setup-claim-code').value = '';
+    btn.textContent = 'Connecter le dispositif';
+    btn.disabled = false;
   } catch(e) {
     showToast('Erreur : ' + e.message, 'error');
     btn.textContent = 'Connecter le dispositif'; btn.disabled = false;
@@ -846,15 +932,14 @@ async function loadMyDevices() {
     : '<option value="">Aucun dispositif</option>';
 
   if (myDevices.length === 0) {
-    // Aucun dispositif → afficher l'écran de liaison
-    document.getElementById('setup-email-display').textContent = 'Connecté en tant que ' + currentUser.email;
-    document.getElementById('setup-screen').style.display = 'flex';
-    document.getElementById('app-screen').style.display = 'none';
+    // ── Aucun dispositif → afficher l'écran de liaison OBLIGATOIRE ──
+    showScreen('setup');
   } else {
-    document.getElementById('setup-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
+    // ── Dispositifs trouvés → aller directement au dashboard ──
+    showScreen('app');
     currentDevice = myDevices[0];
     await selectDevice(currentDevice);
+    showPage('dashboard');
   }
 }
 
@@ -862,7 +947,6 @@ window.selectDevice = async function(id) {
   if (!id) return;
   currentDevice = id;
   document.getElementById('device-select').value = id;
-  // Load info
   const infoSnap = await get(ref(db, `coldguard/devices/${id}/info`));
   deviceInfo = infoSnap.exists() ? infoSnap.val() : null;
   updateInfoUI();
@@ -911,7 +995,6 @@ function updateTempUI() {
   document.getElementById('dash-updated').textContent = `Dernière mise à jour : ${hm}`;
   document.getElementById('dash-badge').innerHTML = makeBadge(status);
 
-  // Status cards
   ['sc-normal','sc-warn','sc-alarm'].forEach(id => {
     const el = document.getElementById(id);
     el.className = 'status-card';
@@ -920,7 +1003,6 @@ function updateTempUI() {
     if (id === 'sc-alarm' && status === 'alarme') el.className += ' active-alarme';
   });
 
-  // Gauge
   const min = deviceInfo?.seuil_min ?? 2.0;
   const max = deviceInfo?.seuil_max ?? 8.0;
   const pct = Math.max(0, Math.min(100, ((parseFloat(temp) - min) / (max - min)) * 100));
@@ -1103,7 +1185,6 @@ function renderChart() {
   const px = i => pad.l + (i / (historyRecords.length - 1 || 1)) * (W - pad.l - pad.r);
   const py = v => pad.t + (1 - (v - minY) / rng) * (H - pad.t - pad.b);
 
-  // Grid
   ctx.strokeStyle = '#E2E8F0'; ctx.lineWidth = 0.5;
   for (let v = minY; v <= maxY; v++) {
     const y = py(v);
@@ -1112,7 +1193,6 @@ function renderChart() {
     ctx.fillText(`${v}°`, pad.l - 4, y + 3);
   }
 
-  // Area
   const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
   grad.addColorStop(0, 'rgba(26,111,212,.15)');
   grad.addColorStop(1, 'rgba(26,111,212,0)');
@@ -1123,12 +1203,10 @@ function renderChart() {
   ctx.lineTo(px(0), H-pad.b);
   ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
 
-  // Line
   ctx.beginPath(); ctx.strokeStyle = '#1A6FD4'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
   historyRecords.forEach((r,i) => i === 0 ? ctx.moveTo(px(i), py(r.temp)) : ctx.lineTo(px(i), py(r.temp)));
   ctx.stroke();
 
-  // Dots (sparse)
   if (historyRecords.length < 60) {
     historyRecords.forEach((r,i) => {
       ctx.beginPath(); ctx.arc(px(i), py(r.temp), 3, 0, Math.PI*2);
@@ -1136,7 +1214,6 @@ function renderChart() {
     });
   }
 
-  // X labels
   const step = Math.ceil(historyRecords.length / 5);
   ctx.fillStyle = '#94A3B8'; ctx.font = '9px DM Mono'; ctx.textAlign = 'center';
   historyRecords.forEach((r,i) => {
@@ -1181,7 +1258,7 @@ async function loadDeviceStatus() {
   document.getElementById('ds-uptime').textContent = `${d}j, ${h}h, ${m}m`;
 }
 
-// ══ CLAIM DEVICE ═════════════════════════════════════════════════
+// ══ CLAIM DEVICE (depuis l'app, page "Ajouter dispositif") ════════
 window.claimDevice = async function() {
   const id   = document.getElementById('claim-id').value.trim();
   const code = document.getElementById('claim-code').value.trim().toUpperCase();
@@ -1241,7 +1318,14 @@ window.toggleNotif = function() {
 };
 
 // ══ NAVIGATION ═══════════════════════════════════════════════════
-const pages = { dashboard:'Tableau de bord', history:'Historique', alerts:'Alertes', 'device-status':'État dispositif', 'add-device':'Ajouter dispositif', settings:'Paramètres' };
+const pages = {
+  dashboard: 'Tableau de bord',
+  history: 'Historique',
+  alerts: 'Alertes',
+  'device-status': 'État dispositif',
+  'add-device': 'Ajouter dispositif',
+  settings: 'Paramètres'
+};
 
 window.showPage = function(page) {
   Object.keys(pages).forEach(p => {
@@ -1275,7 +1359,6 @@ window.showToast = function(msg, type='') {
   setTimeout(() => t.className = 'toast', 3000);
 };
 
-// Resize chart on window resize
 window.addEventListener('resize', () => {
   if (document.getElementById('page-history').style.display !== 'none') renderChart();
 });
