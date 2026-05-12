@@ -371,6 +371,48 @@
   </div>
 </div>
 
+
+<!-- ══ SETUP SCREEN (premier dispositif) ══════════════════════════ -->
+<div id="setup-screen" style="display:none; min-height:100vh; background:linear-gradient(160deg,#0A3D7A 0%,#1A6FD4 50%,#3B82F6 100%); display:none; align-items:center; justify-content:center;">
+  <div class="auth-card" style="max-width:460px">
+    <div class="logo-wrap">
+      <div class="logo-icon">🔗</div>
+      <div class="logo-title">Lier votre dispositif</div>
+      <div class="logo-sub" id="setup-email-display"></div>
+    </div>
+
+    <div style="background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:12px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#0369A1;line-height:1.6;">
+      ❄️ Bienvenue sur <strong>ColdGuard</strong> !<br>
+      Entrez l'identifiant et le code secret de votre capteur ESP32 pour commencer la surveillance.
+    </div>
+
+    <div class="field-group">
+      <label>ID du dispositif</label>
+      <input type="text" id="setup-device-id" placeholder="ex: ESP_A1B2C3"
+        style="width:100%;padding:13px 16px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:14px;font-family:inherit;background:#F8FAFC;outline:none;transition:border-color .2s"
+        onfocus="this.style.borderColor='#1A6FD4'" onblur="this.style.borderColor='#E2E8F0'">
+      <div style="font-size:12px;color:#94A3B8;margin-top:5px">📟 Visible sur l'écran LCD de votre ESP32</div>
+    </div>
+
+    <div class="field-group" style="margin-top:14px">
+      <label>Code secret</label>
+      <input type="text" id="setup-claim-code" placeholder="ex: ABCD1234"
+        style="width:100%;padding:13px 16px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:18px;font-family:'DM Mono',monospace;background:#F8FAFC;outline:none;letter-spacing:3px;text-transform:uppercase;text-align:center;transition:border-color .2s"
+        onfocus="this.style.borderColor='#1A6FD4'" onblur="this.style.borderColor='#E2E8F0'"
+        oninput="this.value=this.value.toUpperCase()">
+      <div style="font-size:12px;color:#94A3B8;margin-top:5px">🔑 Code affiché sur l'écran de votre capteur</div>
+    </div>
+
+    <button class="btn-primary" style="margin-top:20px" onclick="setupClaimDevice()">
+      Connecter le dispositif
+    </button>
+
+    <div style="text-align:center;margin-top:16px">
+      <a onclick="logout()" style="font-size:13px;color:#94A3B8;cursor:pointer">← Se déconnecter</a>
+    </div>
+  </div>
+</div>
+
 <!-- ══ APP SCREEN ═══════════════════════════════════════════════════ -->
 <div id="app-screen">
   <div class="overlay-bg" id="overlay-bg" onclick="closeSidebar()"></div>
@@ -732,7 +774,8 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
     document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display  = 'block';
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display  = 'none';
     const initials = user.email.charAt(0).toUpperCase();
     document.getElementById('user-avatar').textContent = initials;
     document.getElementById('user-email').textContent  = user.email;
@@ -740,11 +783,48 @@ onAuthStateChanged(auth, async user => {
   } else {
     currentUser = null;
     document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('app-screen').style.display  = 'none';
     document.getElementById('auth-btn').textContent = 'Se connecter';
     document.getElementById('auth-btn').disabled = false;
   }
 });
+
+window.setupClaimDevice = async function() {
+  const id   = document.getElementById('setup-device-id').value.trim();
+  const code = document.getElementById('setup-claim-code').value.trim().toUpperCase();
+  if (!id || !code) { showToast('Remplissez tous les champs', 'error'); return; }
+  if (!currentUser) { showToast('Non connecté', 'error'); return; }
+
+  const btn = document.querySelector('#setup-screen .btn-primary');
+  btn.innerHTML = '<span class="spinner"></span> Connexion...';
+  btn.disabled = true;
+
+  try {
+    const snap = await get(ref(db, `coldguard/devices/${id}/claim`));
+    if (!snap.exists()) {
+      showToast('Device ID introuvable', 'error');
+      btn.textContent = 'Connecter le dispositif'; btn.disabled = false; return;
+    }
+    const claim = snap.val();
+    if ((claim.code ?? '').toUpperCase() !== code) {
+      showToast('Code secret incorrect', 'error');
+      btn.textContent = 'Connecter le dispositif'; btn.disabled = false; return;
+    }
+    await set(ref(db, `coldguard/devices/${id}/users/${currentUser.uid}`), true);
+    showToast('Dispositif connecté ! ✅', 'success');
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    if (!myDevices.includes(id)) myDevices.push(id);
+    const sel = document.getElementById('device-select');
+    sel.innerHTML = myDevices.map(d => `<option value="${d}">${d}</option>`).join('');
+    await selectDevice(id);
+    showPage('dashboard');
+  } catch(e) {
+    showToast('Erreur : ' + e.message, 'error');
+    btn.textContent = 'Connecter le dispositif'; btn.disabled = false;
+  }
+};
 
 window.logout = async function() {
   if (latestUnsub) latestUnsub();
@@ -755,8 +835,7 @@ window.logout = async function() {
 // ══ DEVICES ══════════════════════════════════════════════════════
 async function loadMyDevices() {
   const snap = await get(ref(db, 'coldguard/devices'));
-  if (!snap.exists()) return;
-  const data = snap.val();
+  const data = snap.exists() ? snap.val() : {};
   myDevices = [];
   for (const [id, val] of Object.entries(data)) {
     if (val?.users?.[currentUser.uid] === true) myDevices.push(id);
@@ -765,7 +844,15 @@ async function loadMyDevices() {
   sel.innerHTML = myDevices.length
     ? myDevices.map(id => `<option value="${id}">${id}</option>`).join('')
     : '<option value="">Aucun dispositif</option>';
-  if (myDevices.length) {
+
+  if (myDevices.length === 0) {
+    // Aucun dispositif → afficher l'écran de liaison
+    document.getElementById('setup-email-display').textContent = 'Connecté en tant que ' + currentUser.email;
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+  } else {
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
     currentDevice = myDevices[0];
     await selectDevice(currentDevice);
   }
