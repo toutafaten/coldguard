@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ColdGuard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1A6FD4;
+    --primary-dark: #1558A8;
+    --primary-light: #E8F1FB;
+    --normal: #22C55E;
+    --normal-bg: #DCFCE7;
+    --warning: #F59E0B;
+    --warning-bg: #FEF3C7;
+    --alarm: #EF4444;
+    --alarm-bg: #FEE2E2;
+    --bg: #F5F8FF;
+    --surface: #FFFFFF;
+    --text: #0F172A;
+    --text-sec: #64748B;
+    --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ─── AUTH ─── */
+  #auth-screen {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #0A3D7A 0%, #1A6FD4 50%, #3B82F6 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-card {
+    background: white;
+    border-radius: 24px;
+    padding: 40px 36px;
+    width: 100%; max-width: 420px;
+    margin: 20px;
+    box-shadow: 0 24px 60px rgba(10,61,122,0.18);
+  }
+  .logo-wrap { text-align: center; margin-bottom: 28px; }
+  .logo-icon {
+    width: 72px; height: 72px;
+    background: var(--primary-light);
+    border-radius: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 36px; margin-bottom: 14px;
+  }
+  .logo-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .logo-sub { font-size: 14px; color: var(--text-sec); margin-top: 4px; }
+  .field-group { margin-bottom: 14px; }
+  .field-group label { font-size: 13px; font-weight: 500; color: var(--text-sec); display: block; margin-bottom: 6px; }
+  .field-group input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #F8FAFC;
+    transition: border-color .2s;
+    outline: none;
+  }
+  .field-group input:focus { border-color: var(--primary); background: white; }
+  .btn-primary {
+    width: 100%; padding: 14px;
+    background: var(--primary); color: white;
+    border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    cursor: pointer; transition: background .2s, transform .1s;
+    margin-top: 6px;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:active { transform: scale(.98); }
+  .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+  .auth-toggle { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-sec); }
+  .auth-toggle a { color: var(--primary); font-weight: 600; cursor: pointer; text-decoration: none; }
+  .remember-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .remember-row label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .remember-row a { font-size: 13px; color: var(--primary); cursor: pointer; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+
+  /* ─── APP SHELL ─── */
+  #app-screen { display: none; min-height: 100vh; }
+  .app-layout { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    transition: transform .3s;
+  }
+  .sidebar-logo {
+    padding: 24px 20px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .icon { font-size: 28px; }
+  .sidebar-logo .name { font-size: 18px; font-weight: 700; color: var(--text); }
+  .nav-menu { flex: 1; padding: 12px 10px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border-radius: 10px;
+    cursor: pointer; font-size: 14px; font-weight: 500;
+    color: var(--text-sec); transition: all .15s; margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--primary-light); color: var(--primary); }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-bottom { padding: 14px 10px; border-top: 1px solid var(--border); }
+  .user-pill {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 10px;
+  }
+  .user-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--primary-light); color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .user-email { font-size: 12px; color: var(--text-sec); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .logout-btn {
+    width: 100%; padding: 10px; margin-top: 6px;
+    background: none; border: 1.5px solid var(--alarm);
+    color: var(--alarm); border-radius: 10px;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; transition: all .15s;
+  }
+  .logout-btn:hover { background: var(--alarm-bg); }
+
+  /* Main content */
+  .main-content { margin-left: 240px; flex: 1; padding: 28px; min-width: 0; }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
+  }
+  .page-title { font-size: 22px; font-weight: 700; }
+
+  /* ─── DEVICE SELECTOR ─── */
+  .device-selector {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    font-size: 13px; cursor: pointer;
+  }
+  .device-selector select {
+    border: none; background: none; font-family: inherit;
+    font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; outline: none;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .mb-14 { margin-bottom: 14px; }
+  .mb-20 { margin-bottom: 20px; }
+
+  /* Temp card */
+  .temp-card { background: #EBF3FD; }
+  .temp-main { display: flex; align-items: center; justify-content: space-between; }
+  .temp-value { font-size: 64px; font-weight: 700; line-height: 1; color: var(--primary); font-family: 'DM Mono', monospace; }
+  .temp-unit { font-size: 26px; font-weight: 500; color: var(--primary); margin-top: 10px; }
+  .temp-label { font-size: 13px; color: var(--text-sec); margin-bottom: 10px; }
+  .temp-updated { font-size: 12px; color: var(--text-sec); margin-top: 6px; }
+
+  /* Gauge */
+  .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .gauge-bar { width: 16px; height: 120px; background: var(--border); border-radius: 8px; position: relative; overflow: hidden; }
+  .gauge-fill { position: absolute; bottom: 0; width: 100%; border-radius: 8px; transition: height .5s ease; }
+  .gauge-labels { display: flex; flex-direction: column; justify-content: space-between; height: 120px; }
+  .gauge-label { font-size: 10px; color: var(--text-sec); font-family: 'DM Mono', monospace; }
+
+  /* Status badge */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .badge.normal { background: var(--normal-bg); color: var(--normal); }
+  .badge.avertissement { background: var(--warning-bg); color: var(--warning); }
+  .badge.alarme { background: var(--alarm-bg); color: var(--alarm); }
+
+  /* Status cards row */
+  .status-card {
+    border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 14px 10px; text-align: center; transition: all .2s;
+  }
+  .status-card.active-normal { border-color: rgba(34,197,94,.4); background: var(--normal-bg); }
+  .status-card.active-avertissement { border-color: rgba(245,158,11,.4); background: var(--warning-bg); }
+  .status-card.active-alarme { border-color: rgba(239,68,68,.4); background: var(--alarm-bg); }
+  .status-card-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+  .status-card-label { font-size: 11px; font-weight: 600; display: block; }
+  .status-card-sub { font-size: 10px; color: var(--text-sec); }
+
+  /* Info rows */
+  .info-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 0; border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row-left { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .info-row-right { font-size: 14px; font-weight: 500; font-family: 'DM Mono', monospace; }
+
+  /* Section title */
+  .section-title { font-size: 11px; font-weight: 600; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin: 20px 0 10px; }
+
+  /* ─── HISTORY CHART ─── */
+  .period-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+  .period-btn {
+    padding: 7px 18px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    border: 1.5px solid var(--border); background: var(--surface); color: var(--text-sec);
+    cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .period-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  #chart-canvas { width: 100%; height: 220px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .stat-box { border-radius: 12px; padding: 14px 12px; background: var(--surface); border: 1px solid var(--border); }
+  .stat-box-label { font-size: 11px; color: var(--text-sec); }
+  .stat-box-value { font-size: 20px; font-weight: 700; font-family: 'DM Mono', monospace; margin: 4px 0; }
+  .stat-box-sub { font-size: 11px; color: var(--text-sec); }
+
+  /* ─── ALERTS ─── */
+  .alert-tile {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: border-color .15s;
+  }
+  .alert-tile:hover { border-color: var(--primary); }
+  .alert-icon {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .alert-content { flex: 1; }
+  .alert-type { font-size: 13px; font-weight: 600; }
+  .alert-msg { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+  .alert-time { font-size: 12px; color: var(--text-sec); font-family: 'DM Mono', monospace; white-space: nowrap; }
+  .ack-pill {
+    font-size: 10px; padding: 2px 7px; border-radius: 4px;
+    background: var(--border); color: var(--text-sec); margin-left: 8px;
+  }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-sec); }
+  .empty-state .icon { font-size: 52px; opacity: .35; display: block; margin-bottom: 12px; }
+
+  /* Alert detail modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.4);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: white; border-radius: 20px; padding: 28px;
+    width: 100%; max-width: 400px; margin: 20px;
+    transform: translateY(12px); transition: transform .2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-icon-wrap { text-align: center; margin-bottom: 14px; }
+  .modal-circle { width: 72px; height: 72px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 12px; }
+  .modal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .modal-row:last-of-type { border-bottom: none; }
+  .modal-row-label { color: var(--text-sec); }
+  .modal-row-val { font-weight: 500; }
+  .modal-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 16px; }
+  .btn-secondary {
+    width: 100%; padding: 13px; margin-top: 16px;
+    background: none; border: 1.5px solid var(--border);
+    border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; transition: all .15s;
+  }
+  .btn-secondary:hover { border-color: var(--text-sec); }
+
+  /* ─── SETTINGS ─── */
+  .settings-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 4px; border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-label { font-size: 14px; }
+  .settings-row-value { font-size: 14px; color: var(--text-sec); display: flex; align-items: center; gap: 4px; }
+  .toggle {
+    width: 44px; height: 24px; border-radius: 12px; background: var(--border);
+    position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--primary); }
+  .toggle-knob {
+    width: 18px; height: 18px; background: white; border-radius: 50%;
+    position: absolute; top: 3px; left: 3px; transition: left .2s;
+  }
+  .toggle.on .toggle-knob { left: 23px; }
+
+  /* Add device */
+  .add-device-card { max-width: 520px; }
+  .field-label { font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text-sec); }
+  .field-help { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+
+  /* Device status */
+  .status-indicator { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.green { background: var(--normal); }
+  .dot.red { background: var(--alarm); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: white; padding: 12px 22px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; z-index: 300;
+    opacity: 0; transition: all .3s; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--alarm); }
+  .toast.success { background: var(--normal); }
+
+  /* Mobile */
+  .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 6px; }
+  .overlay-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 99; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+  .pulse { animation: pulse 1.5s ease infinite; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main-content { margin-left: 0; padding: 16px; }
+    .hamburger { display: flex; }
+    .overlay-bg.show { display: block; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .topbar { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH SCREEN ══════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="logo-wrap">
+      <div class="logo-icon">❄️</div>
+      <div class="logo-title" id="auth-title">Bienvenue !</div>
+      <div class="logo-sub" id="auth-sub">Connectez-vous à votre compte</div>
+    </div>
+    <div class="field-group">
+      <label>Adresse e-mail</label>
+      <input type="email" id="email-input" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="field-group">
+      <label>Mot de passe</label>
+      <input type="password" id="pass-input" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="remember-row" id="remember-row">
+      <label><input type="checkbox" id="remember-cb"> Se souvenir de moi</label>
+      <a>Mot de passe oublié ?</a>
+    </div>
+    <button class="btn-primary" id="auth-btn" onclick="submitAuth()">Se connecter</button>
+    <div class="auth-toggle">
+      <span id="toggle-text">Vous n'avez pas de compte ? </span>
+      <a onclick="toggleAuthMode()" id="toggle-link">Créer un compte</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP SCREEN ═══════════════════════════════════════════════════ -->
+<div id="app-screen">
+  <div class="overlay-bg" id="overlay-bg" onclick="closeSidebar()"></div>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <span class="icon">❄️</span>
+        <span class="name">ColdGuard</span>
+      </div>
+      <div class="nav-menu">
+        <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Tableau de bord
+        </div>
+        <div class="nav-item" onclick="showPage('history')" data-page="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Historique
+        </div>
+        <div class="nav-item" onclick="showPage('alerts')" data-page="alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Alertes
+          <span id="alert-badge" style="background:var(--alarm);color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:auto;display:none"></span>
+        </div>
+        <div class="nav-item" onclick="showPage('device-status')" data-page="device-status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          État dispositif
+        </div>
+        <div class="nav-item" onclick="showPage('add-device')" data-page="add-device">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Ajouter dispositif
+        </div>
+        <div class="nav-item" onclick="showPage('settings')" data-page="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Paramètres
+        </div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="user-pill">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <div class="user-email" id="user-email">chargement...</div>
+        </div>
+        <button class="logout-btn" onclick="logout()">⇠ Déconnexion</button>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main-content">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="hamburger" onclick="toggleSidebar()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="page-title" id="page-title">Tableau de bord</h1>
+        </div>
+        <div id="device-selector-wrap" class="device-selector">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+          <select id="device-select" onchange="selectDevice(this.value)"></select>
+        </div>
+      </div>
+
+      <!-- PAGES -->
+
+      <!-- Dashboard -->
+      <div id="page-dashboard">
+        <div class="card temp-card mb-14">
+          <div class="temp-label">Température actuelle</div>
+          <div class="temp-main">
+            <div>
+              <div style="display:flex;align-items:flex-start">
+                <span class="temp-value" id="dash-temp">--.-</span>
+                <span class="temp-unit">°C</span>
+              </div>
+              <div class="temp-updated" id="dash-updated">Dernière mise à jour : --:--</div>
+              <div style="margin-top:12px" id="dash-badge"></div>
+            </div>
+            <div class="gauge-wrap">
+              <div class="gauge-label" id="gauge-max">8°</div>
+              <div style="display:flex;gap:6px;align-items:flex-end">
+                <div class="gauge-bar">
+                  <div class="gauge-fill" id="gauge-fill" style="height:50%;background:var(--primary)"></div>
+                </div>
+              </div>
+              <div class="gauge-label" id="gauge-min">2°</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3 mb-14">
+          <div class="status-card" id="sc-normal">
+            <span class="status-card-icon">✅</span>
+            <span class="status-card-label" style="color:var(--normal)">Normal</span>
+            <span class="status-card-sub">Tout est OK</span>
+          </div>
+          <div class="status-card" id="sc-warn">
+            <span class="status-card-icon">⚠️</span>
+            <span class="status-card-label" style="color:var(--warning)">Avertissement</span>
+            <span class="status-card-sub">Surveillance</span>
+          </div>
+          <div class="status-card" id="sc-alarm">
+            <span class="status-card-icon">🚨</span>
+            <span class="status-card-label" style="color:var(--alarm)">Alarme</span>
+            <span class="status-card-sub">Action requise</span>
+          </div>
+        </div>
+
+        <div class="section-title">Aperçu rapide</div>
+        <div class="card mb-14">
+          <div class="info-row"><div class="info-row-left">🌡 Seuil minimum</div><div class="info-row-right" id="dash-min">-- °C</div></div>
+          <div class="info-row"><div class="info-row-left">🌡 Seuil maximum</div><div class="info-row-right" id="dash-max">-- °C</div></div>
+          <div class="info-row"><div class="info-row-left">📊 Moyenne (24h)</div><div class="info-row-right">-- °C</div></div>
+          <div class="info-row"><div class="info-row-left">⏱ Fréquence de mesure</div><div class="info-row-right">30 sec</div></div>
+        </div>
+
+        <div class="card" style="cursor:pointer" onclick="showPage('device-status')">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="background:var(--normal-bg);border-radius:8px;padding:8px;font-size:18px">💻</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:500">État du dispositif</div>
+              <div style="font-size:12px;color:var(--text-sec)">Tout fonctionne correctement</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-sec)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div id="page-history" style="display:none">
+        <div class="period-btns">
+          <button class="period-btn" onclick="setPeriod(0,this)">1H</button>
+          <button class="period-btn active" onclick="setPeriod(1,this)">24H</button>
+          <button class="period-btn" onclick="setPeriod(7,this)">7J</button>
+          <button class="period-btn" onclick="setPeriod(30,this)">30J</button>
+        </div>
+        <div class="card mb-14">
+          <div style="font-size:12px;color:var(--text-sec);margin-bottom:8px">Température (°C)</div>
+          <canvas id="chart-canvas"></canvas>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-box-label">Min</div><div class="stat-box-value" id="stat-min" style="color:#3B82F6">--</div><div class="stat-box-sub" id="stat-min-time">--:--</div></div>
+          <div class="stat-box"><div class="stat-box-label">Max</div><div class="stat-box-value" id="stat-max" style="color:var(--alarm)">--</div><div class="stat-box-sub" id="stat-max-time">--:--</div></div>
+          <div class="stat-box"><div class="stat-box-label">Moyenne</div><div class="stat-box-value" id="stat-avg" style="color:var(--primary)">--</div><div class="stat-box-sub">période</div></div>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div id="page-alerts" style="display:none">
+        <div id="alerts-list"></div>
+      </div>
+
+      <!-- Device Status -->
+      <div id="page-device-status" style="display:none">
+        <div class="card">
+          <div class="info-row">
+            <div class="info-row-left">📶 Connexion WiFi</div>
+            <div id="ds-wifi" class="status-indicator"><div class="dot green"></div> Connecté</div>
+          </div>
+          <div class="info-row">
+            <div class="info-row-left">🌡 Capteur</div>
+            <div id="ds-capteur" class="status-indicator"><div class="dot green"></div> Fonctionnel</div>
+          </div>
+          <div class="info-row">
+            <div class="info-row-left">⚡ Tension</div>
+            <div class="info-row-right" id="ds-voltage">-- V</div>
+          </div>
+          <div class="info-row">
+            <div class="info-row-left">💾 Mémoire</div>
+            <div class="info-row-right" id="ds-mem">-- %</div>
+          </div>
+          <div class="info-row">
+            <div class="info-row-left">⏱ Uptime</div>
+            <div class="info-row-right" id="ds-uptime">--</div>
+          </div>
+          <div class="info-row">
+            <div class="info-row-left">📍 Localisation</div>
+            <div class="info-row-right" id="ds-loc">--</div>
+          </div>
+          <div class="info-row">
+            <div class="info-row-left">🆔 Device ID</div>
+            <div class="info-row-right" id="ds-id" style="font-family:'DM Mono';font-size:12px">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Device -->
+      <div id="page-add-device" style="display:none">
+        <div class="card add-device-card">
+          <p style="font-size:14px;color:var(--text-sec);margin-bottom:20px">Entrez l'identifiant et le code secret de votre dispositif ESP32 pour y accéder.</p>
+          <div class="field-group">
+            <div class="field-label">ID du dispositif</div>
+            <input type="text" id="claim-id" placeholder="ex: ESP_A1B2C3" style="width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-family:inherit;background:#F8FAFC;outline:none">
+            <div class="field-help">Visible sur le LCD de votre ESP32</div>
+          </div>
+          <div class="field-group" style="margin-top:14px">
+            <div class="field-label">Code secret</div>
+            <input type="text" id="claim-code" placeholder="ex: ABCD1234" style="width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-family:'DM Mono';background:#F8FAFC;outline:none;letter-spacing:2px">
+            <div class="field-help">Code affiché sur l'écran de votre dispositif</div>
+          </div>
+          <button class="btn-primary" style="margin-top:20px" onclick="claimDevice()">Connecter le dispositif</button>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div id="page-settings" style="display:none">
+        <div class="section-title">Seuils de température</div>
+        <div class="card mb-14">
+          <div class="settings-row" onclick="editSeuil('min')">
+            <span class="settings-row-label">Seuil bas (°C)</span>
+            <span class="settings-row-value"><span id="set-min">--</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+          <div class="settings-row" onclick="editSeuil('max')">
+            <span class="settings-row-label">Seuil haut (°C)</span>
+            <span class="settings-row-value"><span id="set-max">--</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+        </div>
+
+        <div class="section-title">Fréquence de mesure</div>
+        <div class="card mb-14">
+          <div class="settings-row">
+            <span class="settings-row-label">Fréquence</span>
+            <span class="settings-row-value">30 secondes</span>
+          </div>
+        </div>
+
+        <div class="section-title">Appareil</div>
+        <div class="card mb-14">
+          <div class="settings-row">
+            <span class="settings-row-label">Nom du dispositif</span>
+            <span class="settings-row-value" id="set-nom">--</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">ID Dispositif</span>
+            <span class="settings-row-value" id="set-did" style="font-family:'DM Mono';font-size:12px">--</span>
+          </div>
+        </div>
+
+        <div class="section-title">Notifications</div>
+        <div class="card mb-20">
+          <div class="settings-row" style="cursor:default">
+            <span class="settings-row-label">Notifications push</span>
+            <div class="toggle on" id="notif-toggle" onclick="toggleNotif()"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+
+        <button class="logout-btn" style="width:100%;padding:13px;font-size:14px" onclick="logout()">⇠ Se déconnecter</button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Alert detail modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-icon-wrap">
+      <div class="modal-circle" id="modal-circle"></div>
+    </div>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-rows"></div>
+    <button class="btn-primary" id="modal-ack-btn" onclick="acquitterFromModal()">Acquitter l'alerte</button>
+    <button class="btn-secondary" onclick="closeModal()">Fermer</button>
+  </div>
+</div>
+
+<!-- Seuil edit modal -->
+<div class="modal-overlay" id="seuil-modal" onclick="closeSeuilModal(event)">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-title" id="seuil-modal-title">Modifier le seuil</div>
+    <input type="number" id="seuil-input" step="0.1" style="width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:18px;font-family:'DM Mono';text-align:center;outline:none;background:#F8FAFC">
+    <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--text-sec)">°C</div>
+    <button class="btn-primary" style="margin-top:16px" onclick="saveSeuil()">Valider</button>
+    <button class="btn-secondary" onclick="closeSeuilModal()">Annuler</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+import { getDatabase, ref, get, set, onValue, update, remove }
+  from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+// ══ FIREBASE CONFIG ══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyD378A8jMEWH__CRSAPhKsK11sa1IApruE",
+  authDomain: "chaine-froid-monitoring.firebaseapp.com",
+  databaseURL: "https://chaine-froid-monitoring-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "chaine-froid-monitoring",
+  storageBucket: "chaine-froid-monitoring.firebasestorage.app",
+  messagingSenderId: "488424898291",
+  appId: "1:488424898291:web:e5ee6b1465c45b11614186"
+};
+
+const app   = initializeApp(firebaseConfig);
+const auth  = getAuth(app);
+const db    = getDatabase(app);
+
+// ══ STATE ════════════════════════════════════════════════════════
+let currentUser   = null;
+let myDevices     = [];
+let currentDevice = null;
+let deviceInfo    = null;
+let deviceLatest  = null;
+let latestUnsub   = null;
+let alerts        = [];
+let historyRecords = [];
+let currentPeriodDays = 1;
+let chartCtx      = null;
+let notifOn       = true;
+let seuilEditMode = null;
+
+// ══ AUTH FLOW ════════════════════════════════════════════════════
+let isLoginMode = true;
+
+window.toggleAuthMode = function() {
+  isLoginMode = !isLoginMode;
+  document.getElementById('auth-title').textContent = isLoginMode ? 'Bienvenue !' : 'Créer un compte';
+  document.getElementById('auth-sub').textContent   = isLoginMode ? 'Connectez-vous à votre compte' : 'Rejoignez ColdGuard';
+  document.getElementById('auth-btn').textContent   = isLoginMode ? 'Se connecter' : 'Créer le compte';
+  document.getElementById('toggle-text').textContent= isLoginMode ? "Vous n'avez pas de compte ? " : 'Déjà un compte ? ';
+  document.getElementById('toggle-link').textContent= isLoginMode ? 'Créer un compte' : 'Se connecter';
+  document.getElementById('remember-row').style.display = isLoginMode ? 'flex' : 'none';
+};
+
+window.submitAuth = async function() {
+  const email = document.getElementById('email-input').value.trim();
+  const pass  = document.getElementById('pass-input').value;
+  if (!email || !pass) { showToast('Remplissez tous les champs', 'error'); return; }
+  const btn = document.getElementById('auth-btn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  try {
+    if (isLoginMode) {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } else {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    }
+  } catch (e) {
+    showToast(authError(e.code), 'error');
+    btn.textContent = isLoginMode ? 'Se connecter' : 'Créer le compte';
+    btn.disabled = false;
+  }
+};
+
+function authError(code) {
+  if (code.includes('user-not-found'))  return 'Aucun compte avec cet e-mail';
+  if (code.includes('wrong-password'))  return 'Mot de passe incorrect';
+  if (code.includes('email-already'))   return 'E-mail déjà utilisé';
+  if (code.includes('weak-password'))   return 'Mot de passe trop faible (6 car. min)';
+  if (code.includes('invalid-email'))   return 'Adresse e-mail invalide';
+  if (code.includes('invalid-credential')) return 'Identifiants incorrects';
+  return 'Erreur : ' + code;
+}
+
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display  = 'block';
+    const initials = user.email.charAt(0).toUpperCase();
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-email').textContent  = user.email;
+    await loadMyDevices();
+  } else {
+    currentUser = null;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display  = 'none';
+    document.getElementById('auth-btn').textContent = 'Se connecter';
+    document.getElementById('auth-btn').disabled = false;
+  }
+});
+
+window.logout = async function() {
+  if (latestUnsub) latestUnsub();
+  alerts = []; myDevices = []; currentDevice = null; deviceInfo = null;
+  await signOut(auth);
+};
+
+// ══ DEVICES ══════════════════════════════════════════════════════
+async function loadMyDevices() {
+  const snap = await get(ref(db, 'coldguard/devices'));
+  if (!snap.exists()) return;
+  const data = snap.val();
+  myDevices = [];
+  for (const [id, val] of Object.entries(data)) {
+    if (val?.users?.[currentUser.uid] === true) myDevices.push(id);
+  }
+  const sel = document.getElementById('device-select');
+  sel.innerHTML = myDevices.length
+    ? myDevices.map(id => `<option value="${id}">${id}</option>`).join('')
+    : '<option value="">Aucun dispositif</option>';
+  if (myDevices.length) {
+    currentDevice = myDevices[0];
+    await selectDevice(currentDevice);
+  }
+}
+
+window.selectDevice = async function(id) {
+  if (!id) return;
+  currentDevice = id;
+  document.getElementById('device-select').value = id;
+  // Load info
+  const infoSnap = await get(ref(db, `coldguard/devices/${id}/info`));
+  deviceInfo = infoSnap.exists() ? infoSnap.val() : null;
+  updateInfoUI();
+  subscribeLatest(id);
+  if (document.getElementById('page-history').style.display !== 'none') loadHistory();
+  if (document.getElementById('page-device-status').style.display !== 'none') loadDeviceStatus();
+};
+
+function subscribeLatest(id) {
+  if (latestUnsub) latestUnsub();
+  latestUnsub = onValue(ref(db, `coldguard/devices/${id}/latest`), snap => {
+    if (!snap.exists()) return;
+    const prev = deviceLatest ? {...deviceLatest} : null;
+    deviceLatest = snap.val();
+    updateTempUI();
+    checkAlerts(prev, deviceLatest);
+  });
+}
+
+function updateInfoUI() {
+  const min = deviceInfo?.seuil_min ?? 2.0;
+  const max = deviceInfo?.seuil_max ?? 8.0;
+  document.getElementById('dash-min').textContent = `${min} °C`;
+  document.getElementById('dash-max').textContent = `${max} °C`;
+  document.getElementById('gauge-min').textContent = `${min}°`;
+  document.getElementById('gauge-max').textContent = `${max}°`;
+  document.getElementById('set-min').textContent = min;
+  document.getElementById('set-max').textContent = max;
+  document.getElementById('set-nom').textContent = deviceInfo?.nom ?? '--';
+  document.getElementById('set-did').textContent = currentDevice ?? '--';
+  document.getElementById('ds-loc').textContent  = deviceInfo?.localisation ?? '--';
+  document.getElementById('ds-id').textContent   = currentDevice ?? '--';
+}
+
+function updateTempUI() {
+  if (!deviceLatest) return;
+  const temp   = parseFloat(deviceLatest.temp ?? 0).toFixed(1);
+  const status = deviceLatest.status ?? 'normal';
+  const ts     = deviceLatest.ts ?? 0;
+  const dt     = new Date(ts * 1000);
+  const hm     = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+
+  const color = status === 'alarme' ? 'var(--alarm)' : status === 'avertissement' ? 'var(--warning)' : 'var(--primary)';
+  document.getElementById('dash-temp').textContent = temp;
+  document.getElementById('dash-temp').style.color = color;
+  document.getElementById('dash-updated').textContent = `Dernière mise à jour : ${hm}`;
+  document.getElementById('dash-badge').innerHTML = makeBadge(status);
+
+  // Status cards
+  ['sc-normal','sc-warn','sc-alarm'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'status-card';
+    if (id === 'sc-normal' && status === 'normal') el.className += ' active-normal';
+    if (id === 'sc-warn' && status === 'avertissement') el.className += ' active-avertissement';
+    if (id === 'sc-alarm' && status === 'alarme') el.className += ' active-alarme';
+  });
+
+  // Gauge
+  const min = deviceInfo?.seuil_min ?? 2.0;
+  const max = deviceInfo?.seuil_max ?? 8.0;
+  const pct = Math.max(0, Math.min(100, ((parseFloat(temp) - min) / (max - min)) * 100));
+  document.getElementById('gauge-fill').style.height = `${pct}%`;
+  document.getElementById('gauge-fill').style.background = color;
+}
+
+function makeBadge(status) {
+  const cfg = {
+    normal: { label: 'Normal', dot: 'var(--normal)' },
+    avertissement: { label: 'Avertissement', dot: 'var(--warning)' },
+    alarme: { label: 'Alarme', dot: 'var(--alarm)' },
+  }[status] || { label: status, dot: '#999' };
+  return `<span class="badge ${status}"><span class="badge-dot" style="background:${cfg.dot}"></span>${cfg.label}</span>`;
+}
+
+// ══ ALERTS ═══════════════════════════════════════════════════════
+function checkAlerts(prev, latest) {
+  if (!prev || !latest) return;
+  if (prev.status !== latest.status) {
+    const msg = latest.status === 'alarme'
+      ? `${parseFloat(latest.temp).toFixed(1)} °C dépasse le seuil`
+      : latest.status === 'avertissement'
+      ? `${parseFloat(latest.temp).toFixed(1)} °C proche du seuil`
+      : `Température revenue à ${parseFloat(latest.temp).toFixed(1)} °C`;
+    alerts.unshift({ type: latest.status, message: msg, temp: latest.temp, time: new Date(), deviceName: deviceInfo?.nom ?? currentDevice, acquittee: false });
+    updateAlertBadge();
+    if (latest.status === 'alarme') showToast('🚨 ' + msg, 'error');
+    else if (latest.status === 'avertissement') showToast('⚠️ ' + msg);
+    renderAlerts();
+  }
+}
+
+function updateAlertBadge() {
+  const unack = alerts.filter(a => !a.acquittee && (a.type === 'alarme' || a.type === 'avertissement')).length;
+  const badge = document.getElementById('alert-badge');
+  if (unack > 0) { badge.style.display = 'inline'; badge.textContent = unack; }
+  else badge.style.display = 'none';
+}
+
+function renderAlerts() {
+  const el = document.getElementById('alerts-list');
+  if (alerts.length === 0) {
+    el.innerHTML = `<div class="empty-state"><span class="icon">🔕</span>Aucune alerte<br><small>Tout fonctionne normalement</small></div>`;
+    return;
+  }
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now()-864e5).toDateString();
+  const groups = { today: [], yesterday: [], older: [] };
+  alerts.forEach((a,i) => {
+    const d = a.time.toDateString();
+    if (d === today) groups.today.push({a,i});
+    else if (d === yesterday) groups.yesterday.push({a,i});
+    else groups.older.push({a,i});
+  });
+
+  let html = '';
+  const sec = (title, items) => {
+    if (!items.length) return '';
+    return `<div class="section-title">${title}</div>` + items.map(({a,i}) => alertTileHtml(a,i)).join('');
+  };
+  html += sec("Aujourd'hui", groups.today) + sec('Hier', groups.yesterday) + sec('Plus ancien', groups.older);
+  el.innerHTML = html;
+}
+
+function alertTileHtml(a, i) {
+  const cfg = a.type === 'alarme'
+    ? {icon:'🚨', bg:'var(--alarm-bg)', color:'var(--alarm)', label:'Alarme haute température'}
+    : a.type === 'avertissement'
+    ? {icon:'⚠️', bg:'var(--warning-bg)', color:'var(--warning)', label:'Avertissement'}
+    : {icon:'✅', bg:'var(--normal-bg)', color:'var(--normal)', label:'Retour à la normale'};
+  const hm = `${String(a.time.getHours()).padStart(2,'0')}:${String(a.time.getMinutes()).padStart(2,'0')}`;
+  const ack = a.acquittee ? `<span class="ack-pill">Acquittée</span>` : '';
+  return `<div class="alert-tile" onclick="openAlertDetail(${i})">
+    <div class="alert-icon" style="background:${cfg.bg}">${cfg.icon}</div>
+    <div class="alert-content">
+      <div class="alert-type" style="color:${cfg.color}">${cfg.label}${ack}</div>
+      <div class="alert-msg">${a.message}</div>
+    </div>
+    <div class="alert-time">${hm}</div>
+  </div>`;
+}
+
+let modalAlertIdx = -1;
+window.openAlertDetail = function(i) {
+  const a = alerts[i];
+  modalAlertIdx = i;
+  const cfg = a.type === 'alarme' ? {icon:'🚨',bg:'var(--alarm-bg)',color:'var(--alarm)',title:'Alarme haute température'}
+    : a.type === 'avertissement' ? {icon:'⚠️',bg:'var(--warning-bg)',color:'var(--warning)',title:'Avertissement'}
+    : {icon:'✅',bg:'var(--normal-bg)',color:'var(--normal)',title:'Retour à la normale'};
+
+  document.getElementById('modal-circle').style.background = cfg.bg;
+  document.getElementById('modal-circle').textContent = cfg.icon;
+  document.getElementById('modal-title').style.color = cfg.color;
+  document.getElementById('modal-title').textContent = cfg.title;
+
+  const dt = `${String(a.time.getDate()).padStart(2,'0')}/${String(a.time.getMonth()+1).padStart(2,'0')}/${a.time.getFullYear()} ${String(a.time.getHours()).padStart(2,'0')}:${String(a.time.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('modal-rows').innerHTML = `
+    <div class="modal-row"><span class="modal-row-label">Température</span><span class="modal-row-val">${parseFloat(a.temp).toFixed(1)} °C</span></div>
+    <div class="modal-row"><span class="modal-row-label">Date et heure</span><span class="modal-row-val">${dt}</span></div>
+    <div class="modal-row"><span class="modal-row-label">Dispositif</span><span class="modal-row-val">${a.deviceName}</span></div>
+    <div class="modal-row"><span class="modal-row-label">Statut</span><span class="modal-row-val" style="color:${a.acquittee?'var(--normal)':'var(--alarm)'}">${a.acquittee?'Acquittée':'Non acquittée'}</span></div>
+  `;
+  const ackBtn = document.getElementById('modal-ack-btn');
+  ackBtn.disabled = a.acquittee;
+  ackBtn.style.opacity = a.acquittee ? '.5' : '1';
+  document.getElementById('modal-overlay').classList.add('open');
+};
+
+window.acquitterFromModal = function() {
+  if (modalAlertIdx >= 0 && modalAlertIdx < alerts.length) {
+    alerts[modalAlertIdx].acquittee = true;
+    updateAlertBadge();
+    renderAlerts();
+    closeModal();
+    showToast('Alerte acquittée', 'success');
+  }
+};
+
+window.closeModal = function(e) {
+  if (!e || e.target === document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+};
+
+// ══ HISTORY ══════════════════════════════════════════════════════
+let currentPeriodH = 24;
+window.setPeriod = function(days, btn) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPeriodH = days === 0 ? 1 : days * 24;
+  currentPeriodDays = days === 0 ? 1 : days;
+  loadHistory(days === 0);
+};
+
+async function loadHistory(oneHour = false) {
+  if (!currentDevice) return;
+  historyRecords = [];
+  const days = oneHour ? 1 : currentPeriodDays;
+  const now = new Date();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const snap = await get(ref(db, `coldguard/devices/${currentDevice}/history/${key}`));
+    if (!snap.exists()) continue;
+    const dayData = snap.val();
+    for (const v of Object.values(dayData)) {
+      historyRecords.push({ temp: parseFloat(v.temp ?? 0), status: v.status ?? 'normal', time: new Date((v.ts ?? 0) * 1000) });
+    }
+  }
+  historyRecords.sort((a,b) => a.time - b.time);
+  if (oneHour) {
+    const cutoff = new Date(Date.now() - 3600000);
+    historyRecords = historyRecords.filter(r => r.time > cutoff);
+  }
+  renderChart();
+  renderStats();
+}
+
+function renderChart() {
+  const canvas = document.getElementById('chart-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 700;
+  canvas.height = 220;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!historyRecords.length) {
+    ctx.fillStyle = '#94A3B8'; ctx.font = '14px DM Sans';
+    ctx.textAlign = 'center'; ctx.fillText('Aucune donnée', canvas.width/2, 110);
+    return;
+  }
+
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 44, r: 14, t: 14, b: 36 };
+  const temps = historyRecords.map(r => r.temp);
+  const minY  = Math.floor(Math.min(...temps) - 1);
+  const maxY  = Math.ceil(Math.max(...temps) + 1);
+  const rng   = maxY - minY || 1;
+
+  const px = i => pad.l + (i / (historyRecords.length - 1 || 1)) * (W - pad.l - pad.r);
+  const py = v => pad.t + (1 - (v - minY) / rng) * (H - pad.t - pad.b);
+
+  // Grid
+  ctx.strokeStyle = '#E2E8F0'; ctx.lineWidth = 0.5;
+  for (let v = minY; v <= maxY; v++) {
+    const y = py(v);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#94A3B8'; ctx.font = '10px DM Mono'; ctx.textAlign = 'right';
+    ctx.fillText(`${v}°`, pad.l - 4, y + 3);
+  }
+
+  // Area
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(26,111,212,.15)');
+  grad.addColorStop(1, 'rgba(26,111,212,0)');
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(historyRecords[0].temp));
+  historyRecords.forEach((r,i) => ctx.lineTo(px(i), py(r.temp)));
+  ctx.lineTo(px(historyRecords.length-1), H-pad.b);
+  ctx.lineTo(px(0), H-pad.b);
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+
+  // Line
+  ctx.beginPath(); ctx.strokeStyle = '#1A6FD4'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  historyRecords.forEach((r,i) => i === 0 ? ctx.moveTo(px(i), py(r.temp)) : ctx.lineTo(px(i), py(r.temp)));
+  ctx.stroke();
+
+  // Dots (sparse)
+  if (historyRecords.length < 60) {
+    historyRecords.forEach((r,i) => {
+      ctx.beginPath(); ctx.arc(px(i), py(r.temp), 3, 0, Math.PI*2);
+      ctx.fillStyle = '#1A6FD4'; ctx.fill();
+    });
+  }
+
+  // X labels
+  const step = Math.ceil(historyRecords.length / 5);
+  ctx.fillStyle = '#94A3B8'; ctx.font = '9px DM Mono'; ctx.textAlign = 'center';
+  historyRecords.forEach((r,i) => {
+    if (i % step === 0) {
+      const hm = `${String(r.time.getHours()).padStart(2,'0')}:${String(r.time.getMinutes()).padStart(2,'0')}`;
+      ctx.fillText(hm, px(i), H - 8);
+    }
+  });
+}
+
+function renderStats() {
+  if (!historyRecords.length) {
+    ['stat-min','stat-max','stat-avg'].forEach(id => document.getElementById(id).textContent = '--');
+    return;
+  }
+  const temps = historyRecords.map(r => r.temp);
+  const minT = Math.min(...temps), maxT = Math.max(...temps);
+  const avgT = temps.reduce((a,b) => a+b, 0) / temps.length;
+  const minR = historyRecords.find(r => r.temp === minT);
+  const maxR = historyRecords.find(r => r.temp === maxT);
+  const fmt = t => `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('stat-min').textContent = `${minT.toFixed(1)} °C`;
+  document.getElementById('stat-max').textContent = `${maxT.toFixed(1)} °C`;
+  document.getElementById('stat-avg').textContent = `${avgT.toFixed(1)} °C`;
+  document.getElementById('stat-min-time').textContent = minR ? fmt(minR.time) : '--';
+  document.getElementById('stat-max-time').textContent = maxR ? fmt(maxR.time) : '--';
+}
+
+// ══ DEVICE STATUS ════════════════════════════════════════════════
+async function loadDeviceStatus() {
+  if (!currentDevice) return;
+  const snap = await get(ref(db, `coldguard/devices/${currentDevice}/status`));
+  if (!snap.exists()) return;
+  const s = snap.val();
+  const ok = (connected, label) => `<div class="status-indicator"><div class="dot ${connected?'green':'red'}"></div>${connected ? label : 'Déconnecté'}</div>`;
+  document.getElementById('ds-wifi').innerHTML    = ok(s.wifi_connected ?? true, 'Connecté');
+  document.getElementById('ds-capteur').innerHTML = ok(s.capteur_ok ?? true, 'Fonctionnel');
+  document.getElementById('ds-voltage').textContent = `${(s.voltage ?? 3.3).toFixed(2)} V`;
+  document.getElementById('ds-mem').textContent   = `${s.mem_percent ?? '--'} %`;
+  const up = s.uptime_seconds ?? 0;
+  const d  = Math.floor(up/86400), h = Math.floor((up%86400)/3600), m = Math.floor((up%3600)/60);
+  document.getElementById('ds-uptime').textContent = `${d}j, ${h}h, ${m}m`;
+}
+
+// ══ CLAIM DEVICE ═════════════════════════════════════════════════
+window.claimDevice = async function() {
+  const id   = document.getElementById('claim-id').value.trim();
+  const code = document.getElementById('claim-code').value.trim().toUpperCase();
+  if (!id || !code) { showToast('Remplissez tous les champs', 'error'); return; }
+  if (!currentUser) { showToast('Non connecté', 'error'); return; }
+
+  const snap = await get(ref(db, `coldguard/devices/${id}/claim`));
+  if (!snap.exists()) { showToast('Device ID introuvable', 'error'); return; }
+  const claim = snap.val();
+  if ((claim.code ?? '').toUpperCase() !== code) { showToast('Code secret incorrect', 'error'); return; }
+
+  const alreadySnap = await get(ref(db, `coldguard/devices/${id}/users/${currentUser.uid}`));
+  if (alreadySnap.exists()) { showToast('Vous avez déjà accès à ce dispositif', 'success'); return; }
+
+  await set(ref(db, `coldguard/devices/${id}/users/${currentUser.uid}`), true);
+  if (!myDevices.includes(id)) myDevices.push(id);
+
+  const sel = document.getElementById('device-select');
+  if (!sel.querySelector(`option[value="${id}"]`)) sel.innerHTML += `<option value="${id}">${id}</option>`;
+  showToast('Dispositif connecté avec succès !', 'success');
+  document.getElementById('claim-id').value = '';
+  document.getElementById('claim-code').value = '';
+  await selectDevice(id);
+  showPage('dashboard');
+};
+
+// ══ SETTINGS ═════════════════════════════════════════════════════
+window.editSeuil = function(mode) {
+  seuilEditMode = mode;
+  const val = mode === 'min' ? (deviceInfo?.seuil_min ?? 2.0) : (deviceInfo?.seuil_max ?? 8.0);
+  document.getElementById('seuil-modal-title').textContent = mode === 'min' ? 'Seuil bas (°C)' : 'Seuil haut (°C)';
+  document.getElementById('seuil-input').value = val;
+  document.getElementById('seuil-modal').classList.add('open');
+};
+
+window.saveSeuil = async function() {
+  const val = parseFloat(document.getElementById('seuil-input').value);
+  if (isNaN(val)) { showToast('Valeur invalide', 'error'); return; }
+  const min = seuilEditMode === 'min' ? val : (deviceInfo?.seuil_min ?? 2.0);
+  const max = seuilEditMode === 'max' ? val : (deviceInfo?.seuil_max ?? 8.0);
+  await update(ref(db, `coldguard/devices/${currentDevice}/info`), { seuil_min: min, seuil_max: max });
+  if (!deviceInfo) deviceInfo = {};
+  deviceInfo.seuil_min = min; deviceInfo.seuil_max = max;
+  updateInfoUI(); updateTempUI();
+  closeSeuilModal(); showToast('Seuil mis à jour', 'success');
+};
+
+window.closeSeuilModal = function(e) {
+  if (!e || e.target === document.getElementById('seuil-modal'))
+    document.getElementById('seuil-modal').classList.remove('open');
+};
+
+window.toggleNotif = function() {
+  notifOn = !notifOn;
+  const toggle = document.getElementById('notif-toggle');
+  toggle.className = 'toggle' + (notifOn ? ' on' : '');
+};
+
+// ══ NAVIGATION ═══════════════════════════════════════════════════
+const pages = { dashboard:'Tableau de bord', history:'Historique', alerts:'Alertes', 'device-status':'État dispositif', 'add-device':'Ajouter dispositif', settings:'Paramètres' };
+
+window.showPage = function(page) {
+  Object.keys(pages).forEach(p => {
+    document.getElementById('page-'+p).style.display = p === page ? '' : 'none';
+    const nav = document.querySelector(`[data-page="${p}"]`);
+    if (nav) nav.className = 'nav-item' + (p === page ? ' active' : '');
+  });
+  document.getElementById('page-title').textContent = pages[page];
+  closeSidebar();
+  if (page === 'alerts') renderAlerts();
+  if (page === 'history') loadHistory();
+  if (page === 'device-status') loadDeviceStatus();
+  if (page === 'settings') updateInfoUI();
+};
+
+// ══ SIDEBAR MOBILE ════════════════════════════════════════════════
+window.toggleSidebar = function() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay-bg').classList.toggle('show');
+};
+window.closeSidebar = function() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay-bg').classList.remove('show');
+};
+
+// ══ TOAST ════════════════════════════════════════════════════════
+window.showToast = function(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '') + ' show';
+  setTimeout(() => t.className = 'toast', 3000);
+};
+
+// Resize chart on window resize
+window.addEventListener('resize', () => {
+  if (document.getElementById('page-history').style.display !== 'none') renderChart();
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "apiKey": "AIzaSyD378A8jMEWH__CRSAPhKsK11sa1IApruE",
+  "authDomain": "chaine-froid-monitoring.firebaseapp.com",
+  "databaseURL": "https://chaine-froid-monitoring-default-rtdb.europe-west1.firebasedatabase.app",
+  "projectId": "chaine-froid-monitoring",
+  "storageBucket": "chaine-froid-monitoring.firebasestorage.app",
+  "messagingSenderId": "488424898291",
+  "appId": "1:488424898291:web:e5ee6b1465c45b11614186"
+}
